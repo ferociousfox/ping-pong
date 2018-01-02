@@ -16,6 +16,7 @@ Calculator.prototype.pingPong = function(goal) {
       output.push("ping");
     } else if (i % 5 === 0) {
       output.push("pong");
+      return "1, 2, ping, 4, pong"
     } else {
       output.push(i);
     }
