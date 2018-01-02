@@ -1,12 +1,60 @@
 var del = require('del');
 var utilities = require('gulp-util');
-var buildProduction = utilities.env.production;
 var gulp = require('gulp');
 var source = require('vinyl-source-stream');
 var concat = require('gulp-concat');
 var browserify = require('browserify');
 var uglify = require('gulp-uglify');
 var jshint = require('gulp-jshint');
+var browserSync = require('browser-sync').create();
+var buildProduction = utilities.env.production;
+
+var lib = require('bower-files')({
+  "overrides":{
+    "bootstrap" : {
+      "main": [
+        "less/bootstrap.less",
+        "dist/css/bootstrap.css",
+        "dist/js/bootstrap.js"
+      ]
+    }
+  }
+});
+
+gulp.task('bowerJS', function () {
+  return gulp.src(lib.ext('js').files)
+    .pipe(concat('vendor.min.js'))
+    .pipe(uglify())
+    .pipe(gulp.dest('./build/js'));
+});
+
+gulp.task('bowerCSS', function () {
+  return gulp.src(lib.ext('css').files)
+    .pipe(concat('vendor.css'))
+    .pipe(gulp.dest('./build/css'));
+});
+
+//combine both these 2 Bower tasks into one, since they can run in parallel
+gulp.task('bower', ['bowerJS', 'bowerCSS']);
+
+gulp.task('serve', function() {
+  browserSync.init({
+    server: {
+      baseDir: "./",
+      index: "index.html"
+    }
+  });
+  gulp.watch(['js/*.js'], ['jsBuild']);
+  gulp.watch(['bower.json'], ['bowerBuild']);
+});
+
+gulp.task('jsBuild', ['jsBrowserify', 'jshint'], function(){
+  browserSync.reload();
+});
+
+gulp.task('bowerBuild', ['bower'], function(){
+  browserSync.reload();
+});
 
 gulp.task('concatInterface', function() {
   return gulp.src(['./js/*-interface.js'])
@@ -42,18 +90,29 @@ gulp.task("minifyScripts", ["jsBrowserify"], function(){
     .pipe(gulp.dest("./build/js"));
 });
 
-// we're telling it to delete the entire build and tmp folders. We'll put it right before the build task and call it automatically by making it a dependency of our build task. Whether we're making a production or a development build, we will clean up first.
+// We're telling it to delete the entire build and tmp folders. We'll put it right before the build task and call it automatically by making it a dependency of our build task. Whether we're making a production or a development build, we will clean up first.
 gulp.task("clean", function(){
   return del(['build', 'tmp']);
 });
 
-gulp.task("build", ['clean'], function(){
+gulp.task('build', ['clean'], function(){
   if (buildProduction) {
     gulp.start('minifyScripts');
   } else {
     gulp.start('jsBrowserify');
   }
+  gulp.start('bower');
 });
+
+// This is what I looked like before adding Bower
+// gulp.task("build", ['clean'], function(){
+//   if (buildProduction) {
+//     gulp.start('minifyScripts');
+//   } else {
+//     gulp.start('jsBrowserify');
+//   }
+// });
+
 
 // a short note on gulp.start. The gulp.start function is undocumented on purpose because it will be deprecated in a future version of gulp. In fact, it is actually inherited from a different framework. However, it is very common to use it in this fashion to trigger tasks based on conditional statements. But developers are encouraged to use dependencies wherever possible (that array of other gulp tasks that run automatically) rather than gulp.start to trigger tasks at the correct time.
 
@@ -67,6 +126,7 @@ gulp.task("build", ['clean'], function(){
 //     gulp.start('jsBrowserify');
 //   }
 // });
+
 
 gulp.task('jshint', function(){
   return gulp.src(['js/*.js'])
