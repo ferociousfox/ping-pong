@@ -20,7 +20,7 @@ Calculator.prototype.pingPong = function(goal) {
     }
   }
   return output;
-}
+};
 
 // Node Export
 exports.calculatorModule = Calculator;
